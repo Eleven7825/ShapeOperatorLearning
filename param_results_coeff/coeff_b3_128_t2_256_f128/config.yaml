@@ -1,0 +1,38 @@
+data:
+  npz_files_pattern: ../Nov6/transformed_data/processed_geometry_data_{}.npz
+  npz_range:
+  - 1
+  - 2300
+  num_workers: 12
+  persistent_workers: true
+  pin_memory: true
+  ref_xyz_vtk_path: ../Nov6/matchings/matching_1/1-shoot-1.vtk
+  train_split: 0.8
+model:
+  branch_dims:
+  - 25
+  - 64
+  - 64
+  - 64
+  final_dim: 64
+  trunk_dims:
+  - 3
+  - 64
+  - 64
+  - 64
+modules:
+  dataset_class: ShearStressDataset
+  dataset_module: dataset.shearStressDataSet_xyz_coeff
+  model_class: ShearStressNN
+  model_module: models.shearStressNN_coeff
+  training_function: train_model
+  training_function_module: models.shearStressNN_coeff
+output:
+  plot_curves: true
+  result_dir: ./param_results_coeff/coeff_b3_128_t2_256_f128/
+  save_model: true
+training:
+  batch_size: auto
+  learning_rate: 0.001
+  n_epochs: 10
+  seed: 42

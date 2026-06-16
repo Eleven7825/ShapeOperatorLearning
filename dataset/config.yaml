@@ -1,0 +1,39 @@
+data:
+  npz_files_pattern: /home/shiyichen/10tb/shiyi/vecPrj/Nov6/transformed_data/transformed_data_{}.npz
+  npz_range:
+  - 1
+  - 2300
+  ref_xyz_vtk_path: ~/10tb/shiyi/vecPrj/Nov6/matchings/matching_1/1-shoot-1.vtk
+  num_workers: 12
+  persistent_workers: true
+  pin_memory: true
+  train_split: 0.95
+model:
+  # First dimension will be automatically set to coefficient size (25)
+  branch_dims:
+  - 25  # This will be overridden with actual coefficient size
+  - 128
+  - 128
+  - 128
+  final_dim: 128
+  trunk_dims:
+  - 3
+  - 256
+  - 256
+modules:
+  # Update these to point to your new modules
+  dataset_class: ShearStressDataset
+  dataset_module: dataset.shearStressDataSet_xyz_coeff  # Update to your new module path
+  model_class: ShearStressNN
+  model_module: models.shearStressNN_coeff  # Update to your new module path
+  training_function: train_model
+  training_function_module: models.shearStressNN_coeff  # Update to your new module path
+output:
+  plot_curves: true
+  result_dir: ../param_results_coeff/coeff_b3_128_t2_256_f128/
+  save_model: true
+training:
+  batch_size: auto
+  learning_rate: 0.001
+  n_epochs: 10
+  seed: 42
