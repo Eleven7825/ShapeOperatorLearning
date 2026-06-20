@@ -1,0 +1,40 @@
+data:
+  npz_files_pattern: ../TAA_CFD_pipeline/training_data/processed_TAA_data_{}.npz
+  npz_range:
+  - 0
+  - 599
+  ref_xyz_vtk_path: ../TAA_CFD_pipeline/matchings/sample_00001/1-shoot-16.vtk
+  value_key: pressure_values
+  num_workers: 12
+  persistent_workers: true
+  pin_memory: true
+  train_split: 0.8
+model:
+  branch_dims:
+  - 24   # 8 SVD modes x 3 components
+  - 64
+  - 64
+  - 64
+  final_dim: 64
+  trunk_dims:
+  - 3
+  - 64
+  - 64
+  - 64
+  out_dim: 1
+modules:
+  dataset_class: ShearStressDataset
+  dataset_module: dataset.shearStressDataSet_xyz_coeff
+  model_class: ShearStressNN
+  model_module: models.shearStressNN_coeff
+  training_function: train_model
+  training_function_module: models.shearStressNN_coeff
+output:
+  plot_curves: true
+  result_dir: ./results_TAA/pressure_b24_64_t3_64_n600/
+  save_model: true
+training:
+  batch_size: auto
+  learning_rate: 0.001
+  n_epochs: 50
+  seed: 42

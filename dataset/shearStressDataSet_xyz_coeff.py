@@ -13,19 +13,24 @@ class ShearStressDataset(Dataset):
     def __init__(self, npz_files, coefficients_file, **kwargs):
         """
         Initialize the dataset
-        
+
         Args:
             npz_files: List of NPZ files to load
             coefficients_file: Path to the NPZ file containing spherical harmonic coefficients
-            **kwargs: Additional keyword arguments
+            **kwargs:
                 ref_xyz_vtk_path: Path to the VTK file containing reference xyz coordinates
+                value_key: NPZ key to load as target (default: 'transformed_values')
+                out_dim: Number of output components to keep (default: 3)
         """
         super().__init__()
         values_list = []
         coeff_list = []
         
-        # Get ref_xyz_vtk_path from kwargs
-        ref_xyz_vtk_path = kwargs.get('ref_xyz_vtk_path', os.path.expanduser("../Apr1/matchings/matching_1/1-shoot-1.vtk"))
+        if 'ref_xyz_vtk_path' not in kwargs:
+            raise ValueError("ref_xyz_vtk_path must be provided via config['data']['ref_xyz_vtk_path']")
+        ref_xyz_vtk_path = kwargs['ref_xyz_vtk_path']
+        value_key = kwargs.get('value_key', 'transformed_values')
+        out_dim   = kwargs.get('out_dim', 3)
         print(f"Using reference VTK file: {ref_xyz_vtk_path}")
         
         # Load reference xyz coordinates from VTK file
@@ -49,7 +54,7 @@ class ShearStressDataset(Dataset):
         print(f"Each coefficient vector has length: {coefficients.shape[1]}")
         
         # Regular expression to extract case number from file path - INCLUDING THE NEW PATTERN
-        case_pattern = re.compile(r'(processed_spheroid_data_|transformed_data_|processed_geometry_data_)(\d+)\.npz')
+        case_pattern = re.compile(r'(processed_spheroid_data_|transformed_data_|processed_geometry_data_|processed_TAA_data_)(\d+)\.npz')
         
         print(f"Loading {len(npz_files)} data files...")
         loaded_files = 0
@@ -84,30 +89,33 @@ class ShearStressDataset(Dataset):
                 
                 # Try to get transformed_values, or interpolated_values as fallback
                 try:
-                    if 'transformed_values' in data:
-                        values = data['transformed_values']
-                        if i == 0:  # Only print for the first file to avoid spamming
-                            print(f"Using transformed_values from files")
-                    elif 'interpolated_values' in data:
+                    if value_key in data:
+                        values = data[value_key]
+                        if i == 0:
+                            print(f"Using '{value_key}' from files")
+                    elif value_key == 'transformed_values' and 'interpolated_values' in data:
                         values = data['interpolated_values']
-                        if i == 0:  # Only print for the first file to avoid spamming
-                            print(f"Using interpolated_values from files")
+                        if i == 0:
+                            print(f"Falling back to 'interpolated_values'")
                     else:
-                        print(f"No values found in {file}, skipping...")
+                        print(f"Key '{value_key}' not found in {file}, skipping...")
                         skipped_files += 1
                         continue
                 except Exception as e:
                     print(f"Error loading values from {file}: {e}")
                     skipped_files += 1
                     continue
-                
+
+                # Ensure 2D: (N,) → (N, 1)
+                if values.ndim == 1:
+                    values = values[:, None]
+
                 if np.all(values == 0):
                     print(f"Skipping {file} due to all its values are zero!")
                     skipped_files += 1
                     continue
-                
-                # Only use the first 3 components of values (if there are more)
-                values = values[:, 0:3]
+
+                values = values[:, :out_dim]
                 
                 # Get coefficients for this case
                 case_coeffs = coeff_mapping[case_number]

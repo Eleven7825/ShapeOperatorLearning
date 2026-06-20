@@ -27,8 +27,10 @@ def main():
     parser = argparse.ArgumentParser(description='Train a ShearStress neural network model with spherical harmonic coefficients')
     parser.add_argument('--config', type=str, default='./inputs/config.yaml', 
                         help='Path to the configuration YAML file (default: ./inputs/config.yaml)')
-    parser.add_argument('--coefficients', type=str, default='coefficient_data.npz',
-                        help='Path to the NPZ file containing spherical harmonic coefficients')
+    parser.add_argument('--coefficients', type=str, required=True,
+                        help='Path to coefficient_data.npz produced by the data generation pipeline')
+    parser.add_argument('--skip_zero_filter', action='store_true',
+                        help='Skip the hardcoded zero-stress case filter (use for non-Nov6 datasets)')
     args = parser.parse_args()
     
     # Load configuration from YAML file
@@ -71,18 +73,29 @@ def main():
         for i in range(config['data']['npz_range'][0], config['data']['npz_range'][1] + 1)
     ]
     
-    # Filter out zero shear stress cases
-    print(f"\n{'='*60}")
-    print("FILTERING OUT ZERO SHEAR STRESS CASES")
-    print(f"{'='*60}")
-    npz_files = filter_zero_stress_files(npz_files)
-    verify_zero_case_exclusion(npz_files)
-    print(f"{'='*60}\n")
+    # Filter out zero shear stress cases (skip for datasets validated at prep time)
+    if args.skip_zero_filter:
+        print("Skipping zero-stress case filter (--skip_zero_filter set)")
+    else:
+        print(f"\n{'='*60}")
+        print("FILTERING OUT ZERO SHEAR STRESS CASES")
+        print(f"{'='*60}")
+        npz_files = filter_zero_stress_files(npz_files)
+        verify_zero_case_exclusion(npz_files)
+        print(f"{'='*60}\n")
     
     # Create dataset with coefficients
     print(f"Creating dataset with spherical harmonic coefficients...")
     start_time = time.time()
-    full_dataset = ShearStressDataset(npz_files, coefficients_path)
+    ref_xyz_vtk_path = config['data']['ref_xyz_vtk_path']
+    value_key = config['data'].get('value_key', 'transformed_values')
+    out_dim   = config['model'].get('out_dim', 3)
+    full_dataset = ShearStressDataset(
+        npz_files, coefficients_path,
+        ref_xyz_vtk_path=ref_xyz_vtk_path,
+        value_key=value_key,
+        out_dim=out_dim,
+    )
     print(f"Dataset creation time: {(time.time() - start_time) / 60:.2f} minutes")
 
     # Get the actual number of loaded shapes from the dataset
@@ -155,6 +168,8 @@ def main():
     # Add optional parameters if they exist in config
     if 'final_dim' in config['model']:
         model_kwargs['final_dim'] = config['model']['final_dim']
+    if 'out_dim' in config['model']:
+        model_kwargs['out_dim'] = config['model']['out_dim']
     if 'combined_dims' in config['model']:
         model_kwargs['combined_dims'] = config['model']['combined_dims']
     if 'dropout' in config['model']:

@@ -6,7 +6,7 @@ import csv
 import numpy as np
 
 class ShearStressNN(nn.Module):
-    def __init__(self, branch_dims=[25, 64, 64, 64], trunk_dims=[3, 64, 64, 64], final_dim=64):
+    def __init__(self, branch_dims=[25, 64, 64, 64], trunk_dims=[3, 64, 64, 64], final_dim=64, out_dim=3):
         """
         Neural network for predicting shear stress using spherical harmonic coefficients
 
@@ -43,7 +43,7 @@ class ShearStressNN(nn.Module):
         
         self.branch_to_final = nn.Linear(branch_dims[-1], final_dim)
         self.trunk_to_final = nn.Linear(trunk_dims[-1], final_dim)
-        self._out_layer = nn.Linear(final_dim, 3)
+        self._out_layer = nn.Linear(final_dim, out_dim)
     
     def forward(self, coeffs, xyz):
         """
